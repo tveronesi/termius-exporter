@@ -358,8 +358,11 @@ def export_hosts_csv(host_map: Dict[str, dict]) -> int:
 
 def export_ssh_keys(keys_by_label: Dict[str, dict]) -> int:
     keys_dir = OUTPUT_DIR / "ssh_keys"
-    if not keys_dir.exists():
-        keys_dir.mkdir(mode=0o700)
+    if keys_dir.exists():
+        if not keys_dir.is_dir():
+            raise RuntimeError(f"Output path exists and is not a directory: {keys_dir}")
+    else:
+        keys_dir.mkdir(mode=0o700, parents=True)
 
     count = 0
     for label, key_obj in keys_by_label.items():
@@ -383,8 +386,8 @@ def export_ssh_keys(keys_by_label: Dict[str, dict]) -> int:
 def export_snippets(snippets: Dict[str, dict]) -> int:
     lines = ["Label,Script\n"]
     for label, snippet in snippets.items():
-        script = (snippet.get("script") or "").replace('"', '""').replace("\n", "\\n")
-        lines.append(f'"{label}","{script}"\n')
+        script = (snippet.get("script") or "").replace("\n", "\\n")
+        lines.append(",".join((escape_csv(label), escape_csv(script))) + "\n")
 
     _write_text(OUTPUT_DIR / "snippets.csv", BOM + "".join(lines), 0o600)
     return len(snippets)
