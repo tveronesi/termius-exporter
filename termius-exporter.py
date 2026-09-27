@@ -53,7 +53,11 @@ def _import_dependencies():
 keyring, KeyringError, NoKeyringError, CryptoError, SecretBox = _import_dependencies()
 
 BOM = "\ufeff"
-OUTPUT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = Path(__file__).resolve().parent
+_output_dir_value = os.environ.get("TERMIUS_OUTPUT_DIR", str(SCRIPT_DIR))
+OUTPUT_DIR = Path(_output_dir_value).expanduser()
+if not OUTPUT_DIR.is_absolute():
+    OUTPUT_DIR = (Path.cwd() / OUTPUT_DIR).resolve()
 LEVELDB_SUBPATH = ("Termius", "IndexedDB", "file__0.indexeddb.leveldb")
 KEY_SERVICES = ("Termius", "com.termius.mac")
 KEY_ACCOUNTS = ("localKey", "TermiusKey", "key", "masterKey")
@@ -79,6 +83,9 @@ def get_db_candidates() -> List[Path]:
 
 
 def get_db_path() -> Path:
+    manual_db_path = os.environ.get("TERMIUS_DB_PATH")
+    if manual_db_path:
+        return Path(manual_db_path).expanduser()
     candidates = get_db_candidates()
     return next((candidate for candidate in candidates if candidate.exists()), candidates[0])
 
@@ -334,6 +341,7 @@ def _write_text(path: Path, content: str, mode: int, newline: str = "") -> None:
 
 
 def export_hosts_csv(host_map: Dict[str, dict]) -> int:
+    OUTPUT_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     lines = ["Label,Host,Port,Username,Password,SSH_Key,OS\n"]
     for host in host_map.values():
         lines.append(
@@ -357,6 +365,7 @@ def export_hosts_csv(host_map: Dict[str, dict]) -> int:
 
 
 def export_ssh_keys(keys_by_label: Dict[str, dict]) -> int:
+    OUTPUT_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     keys_dir = OUTPUT_DIR / "ssh_keys"
     if keys_dir.exists():
         if not keys_dir.is_dir():
@@ -384,6 +393,7 @@ def export_ssh_keys(keys_by_label: Dict[str, dict]) -> int:
 
 
 def export_snippets(snippets: Dict[str, dict]) -> int:
+    OUTPUT_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     lines = ["Label,Script\n"]
     for label, snippet in snippets.items():
         script = (snippet.get("script") or "").replace("\n", "\\n")

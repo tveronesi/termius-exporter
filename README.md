@@ -65,6 +65,36 @@ python3 termius-exporter.py --key='<base64-or-64-char-hex>'
 
 The Python script accepts the same kinds of keys as the JavaScript exporter: a 64-character hexadecimal key or a base64 key decoding to exactly 32 bytes. It writes the same output files in this folder: `termius_hosts.csv`, `ssh_keys/`, and `snippets.csv`.
 
+### Docker / 容器运行
+
+```bash
+# Build the image
+docker build -t termius-exporter .
+```
+
+Containerized export is easiest with a manually supplied key, because host keychain APIs are typically not available inside the container.
+
+```bash
+# Example: mount the Termius LevelDB directory read-only and write outputs to ./docker-output
+mkdir -p docker-output
+
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e TERMIUS_KEY='<base64-or-64-char-hex>' \
+  -e TERMIUS_DB_PATH=/termius-db \
+  -e TERMIUS_OUTPUT_DIR=/output \
+  -v "/absolute/path/to/file__0.indexeddb.leveldb:/termius-db:ro" \
+  -v "$PWD/docker-output:/output" \
+  termius-exporter
+```
+
+Notes:
+- `TERMIUS_DB_PATH` should point at the Termius `file__0.indexeddb.leveldb` directory you mounted into the container.
+- `TERMIUS_OUTPUT_DIR` lets Docker write `termius_hosts.csv`, `ssh_keys/`, and `snippets.csv` to a mounted host directory while preserving the default local behavior when the variable is unset.
+- If you prefer the auto-detected paths outside Docker, omit `TERMIUS_DB_PATH`.
+- The same `TERMIUS_KEY` value accepted by the Python script works in Docker.
+- `--user "$(id -u):$(id -g)"` keeps the exported files owned by your current host user on Linux/macOS.
+
 ---
 
 ## 📦 OUTPUT / 输出
